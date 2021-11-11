@@ -1,7 +1,8 @@
 from logging import raiseExceptions
+from django.contrib.auth import tokens
 from django.shortcuts import render
 from rest_framework import generics, serializers, status, views
-from .serializers import RegisterSerializer, EmailVerificationSerializer, LoginSerializer, ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer
+from .serializers import RegisterSerializer, EmailVerificationSerializer, LoginSerializer, ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer, TestSetNewPasswordSerializer
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
@@ -17,6 +18,8 @@ from django.utils.encoding import force_bytes, force_str, smart_str, force_str, 
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from rest_framework.exceptions import AuthenticationFailed
+import json
 # Create your views here.
 
 
@@ -102,8 +105,10 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
             token = PasswordResetTokenGenerator().make_token(user)
             current_site = get_current_site(
                 request=request).domain
+            # relativeLink = reverse(
+            #    'password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
             relativeLink = reverse(
-                'password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
+                'test-password-reset-complete', kwargs={'uidb64': uidb64, 'token': token})
             absurl = 'http://'+current_site + relativeLink
             email_body = 'Hello \n  Use this link to reset your password \n' + absurl
             data = {'email_body': email_body, 'to_email': user.email,
@@ -111,10 +116,12 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
 
             Util.send_email(data)
 
-        return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+            return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'User not Found'}, status=status.HTTP_404_NOT_FOUND)
 
 
-class PasswordTokenCheckAPI(generics.GenericAPIView):
+class PasswordTokenCheckAPI(views.APIView):
     def get(self, request, uidb64, token):
         try:
             id = smart_bytes(urlsafe_base64_decode(uidb64))
@@ -136,3 +143,27 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response({'success': True, 'message': 'Password Reset successfully'}, status=status.HTTP_200_OK)
+
+
+class TestSetNewPasswordAPIView(generics.GenericAPIView):
+    serializer_class = TestSetNewPasswordSerializer
+
+    def post(self, request, uidb64, token):
+        try:
+            password = request.data['password']
+
+            id = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(id=id)
+
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise AuthenticationFailed('The reset link is expired', 401)
+
+            user.set_password(password)
+            user.save()
+            print(user)
+
+            #res_data = json.dumps(user)
+
+            return Response({'success': True, 'message': "Password Reset successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            raise AuthenticationFailed('The reset link is invalid', 401)
