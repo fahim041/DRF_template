@@ -5,5 +5,19 @@
     {% else %}
     <h1>Hello World</h1>
     {% endif %}
+
+    <h2>Aggregate</h2>
+    <p>{{agg}}</p>
+
+    <h2>Get</h2>
+    <p>{{get.title}}</p>
+
+    <h2>Query:</h2>
+
+    {% for product in products %}
+      <div>{{product.title}} -->{{product.collection.title}} --> {{product.unit_price}} --> {{product.inventory}}</div>
+    {% endfor %}
+
+    
   </body>
 </html>
