@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets, parsers
-from .models import Uploader
-from .serializers import UploaderSerializer
+from .models import Store, Uploader
+from .serializers import StoreSerializer, UploaderSerializer
 
 # Create your views here.
 
@@ -9,4 +9,10 @@ from .serializers import UploaderSerializer
 class UploadViewSet(viewsets.ModelViewSet):
     queryset = Uploader.objects.all()
     serializer_class = UploaderSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+
+class StoreViewSet(viewsets.ModelViewSet):
+    queryset = Store.objects.all()
+    serializer_class = StoreSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
