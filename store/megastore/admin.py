@@ -3,6 +3,9 @@ from django.db.models import Count
 from django.urls import reverse
 from django.utils.html import format_html, urlencode
 from django.conf.locale.en import formats as en_formats
+from django.contrib.contenttypes.admin import GenericTabularInline
+
+from tags.models import TaggedItem
 from . import models
 
 en_formats.DATETIME_FORMAT = "d M Y H:i:s"
@@ -25,8 +28,18 @@ class InventoryFilter(admin.SimpleListFilter):
             return queryset.filter(inventory__gt=25)
 
 
+class TagInline(GenericTabularInline):
+    autocomplete_fields = ['tag']
+    model = TaggedItem
+
+
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
+    inlines = [TagInline]
+    autocomplete_fields = ['collection']
+    prepopulated_fields = {
+        'slug': ['title']
+    }
     actions = ['clear_inventory']
     readonly_fields = ['last_update']
     list_display = ['title', 'unit_price',
@@ -35,6 +48,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ['collection', 'last_update', InventoryFilter]
     list_per_page = 10
     list_select_related = ['collection']
+    search_fields = ['title']
 
     def collection_title(self, product):
         return product.collection.title
@@ -78,9 +92,17 @@ class CustomerAdmin(admin.ModelAdmin):
         )
 
 
+class OrderItemInLine(admin.TabularInline):
+    autocomplete_fields = ['product']
+    model = models.OrderItem
+    extra = 0
+
+
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ['id', 'placed_at', 'customer']
+    inlines = [OrderItemInLine]
+    autocomplete_fields = ['customer']
 
 
 @admin.register(models.Collection)

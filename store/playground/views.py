@@ -1,9 +1,11 @@
 from django.shortcuts import render
-from django.db.models import Q, F
-from megastore.models import Product, OrderItem, Order
+from django.db.models import Q, F, Value
+from django.db.models.aggregates import Count, Max, Min, Avg, Sum
+from megastore.models import Product, OrderItem, Order, Customer
 
 
 def play(request):
-    queryset = Order.objects.prefetch_related(
-        'orderitem_set').order_by('-placed_at')[:5]
-    return render(request, 'playground/play.html', {'products': list(queryset)})
+    result = Customer.objects.annotate(
+        orders_count=Count('order')
+    )
+    return render(request, 'playground/play.html', {'result': result})
